@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    # Weekly, to pick up Debian security updates.
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Tags follow the Docker Hub ones; trixie also carries latest, steam and root, as upstream does.
+          - release: trixie
+            steam-tags: steam-trixie,steam,latest
+            root-tags: root-trixie,root
+          - release: bookworm
+            steam-tags: steam-bookworm
+            root-tags: root-bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tags
+        id: tags
+        run: |
+          image=ghcr.io/${GITHUB_REPOSITORY,,}
+          for kind in steam root; do
+            [ $kind = steam ] && tags='${{ matrix.steam-tags }}' || tags='${{ matrix.root-tags }}'
+            echo "$kind=$(echo "$tags" | tr ',' '\n' | sed "s#^#$image:#" | paste -sd,)" >> "$GITHUB_OUTPUT"
+          done
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.release }}
+          target: ${{ matrix.release }}-root
+          push: true
+          tags: ${{ steps.tags.outputs.root }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.release }}
+          target: ${{ matrix.release }}
+          push: true
+          tags: ${{ steps.tags.outputs.steam }}
