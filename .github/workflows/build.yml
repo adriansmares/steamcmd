@@ -27,9 +27,9 @@ jobs:
             steam-tags: steam-bookworm
             root-tags: root-bookworm
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -42,13 +42,13 @@ jobs:
             [ $kind = steam ] && tags='${{ matrix.steam-tags }}' || tags='${{ matrix.root-tags }}'
             echo "$kind=$(echo "$tags" | tr ',' '\n' | sed "s#^#$image:#" | paste -sd,)" >> "$GITHUB_OUTPUT"
           done
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.release }}
           target: ${{ matrix.release }}-root
           push: true
           tags: ${{ steps.tags.outputs.root }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.release }}
           target: ${{ matrix.release }}
